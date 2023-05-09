@@ -12,7 +12,7 @@ local Cache = require("cmp-gh-users.cache")
 describe("cache", function()
   it("can save a cache item", function()
     -- Given
-    local cache = Cache.new("not important", {})
+    local cache = Cache.new("not important", 1, {})
 
     -- When
     local cache_item = { isComplete = false, items = {} }
