@@ -5,7 +5,7 @@ local fs = require "cmp-gh-users.fs"
 local github = require "cmp-gh-users.github"
 
 ---@type string
-local cache_file = vim.fn.stdpath("cache") .. "/cmp-gh-users/org-users.json"
+local cache_file = vim.fn.stdpath("cache") .. "/cmp-gh-users.json"
 
 github.when_in_github_repo(function(remote)
   local cache = Cache.new(cache_file, 60 * 60, fs)
