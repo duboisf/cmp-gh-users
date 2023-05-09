@@ -12,10 +12,10 @@ github.when_in_github_repo(function(remote)
   async.run(
     function() cache:load() end,
     function()
-      local gh_org_users = Source.new(cache, remote.owner)
+      local source = Source.new(cache, remote.owner)
       vim.schedule_wrap(function()
         ---@diagnostic disable-next-line: param-type-mismatch
-        require("cmp").register_source("gh_org_users", gh_org_users)
+        require("cmp").register_source("gh-users", source)
       end)()
     end)
 end)
