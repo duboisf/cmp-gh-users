@@ -39,56 +39,56 @@ local graphql_query = [[
   }
 ]]
 
----@class ghcmp.OrgMembersQueryResult
----@field data ghcmp.OrgMembersQueryResultData
+---@class cmp.gh.users.OrgMembersQueryResult
+---@field data cmp.gh.users.OrgMembersQueryResultData
 
----@class ghcmp.OrgMembersQueryResultData
----@field organization ghcmp.Organization
+---@class cmp.gh.users.OrgMembersQueryResultData
+---@field organization cmp.gh.users.Organization
 
----@class ghcmp.Organization
+---@class cmp.gh.users.Organization
 ---@field name string The name of the organization
----@field membersWithRole ghcmp.OrgMemberConnection
+---@field membersWithRole cmp.gh.users.OrgMemberConnection
 
----@class ghcmp.OrgMemberConnection
----@field edges ghcmp.OrgMemberEdge[]
----@field pageInfo ghcmp.PageInfo
+---@class cmp.gh.users.OrgMemberConnection
+---@field edges cmp.gh.users.OrgMemberEdge[]
+---@field pageInfo cmp.gh.users.PageInfo
 
----@class ghcmp.PageInfo
+---@class cmp.gh.users.PageInfo
 ---@field hasNextPage boolean
 ---@field endCursor? string
 
----@alias ghcmp.Role
+---@alias cmp.gh.users.Role
 ---| ""ADMIN""
 ---| ""MEMBER""
 
----@class ghcmp.OrgMemberEdge
----@field node ghcmp.User
----@field role ghcmp.Role
+---@class cmp.gh.users.OrgMemberEdge
+---@field node cmp.gh.users.User
+---@field role cmp.gh.users.Role
 
----@class ghcmp.User
+---@class cmp.gh.users.User
 ---@field login string
 ---@field name string?
 ---@field bio string?
 ---@field location string?
 ---@field company string?
----@field socialAccounts ghcmp.SocialAccounts
----@field status ghcmp.Status
+---@field socialAccounts cmp.gh.users.SocialAccounts
+---@field status cmp.gh.users.Status
 
----@class ghcmp.Status
+---@class cmp.gh.users.Status
 ---@field emojiHTML string?
 ---@field indicatesLimitedAvailability boolean
 ---@field message string?
 
----@class ghcmp.SocialAccounts
----@field nodes ghcmp.SocialAccount[]
+---@class cmp.gh.users.SocialAccounts
+---@field nodes cmp.gh.users.SocialAccount[]
 
----@class ghcmp.SocialAccount
+---@class cmp.gh.users.SocialAccount
 ---@field displayName string
 ---@field provider string
 ---@field url string
 
 ---@param github_owner string
----@param callback fun(ok: boolean, result: ghcmp.OrgMembersQueryResult?)
+---@param callback fun(ok: boolean, result: cmp.gh.users.OrgMembersQueryResult?)
 function M.org_users(github_owner, callback)
   local job = Job:new({
     "gh",
@@ -125,7 +125,7 @@ end
 ---The callback is only called when the current working
 ---directory is inside a git repository that has a remote
 ---named `origin` that is a GitHub repository.
----@param callback fun(remote: ghcmp.GitHubRemoteUrl)
+---@param callback fun(remote: cmp.gh.users.GitHubRemoteUrl)
 ---@return nil
 function M.when_in_github_repo(callback)
   git.remote("origin", function(remote)

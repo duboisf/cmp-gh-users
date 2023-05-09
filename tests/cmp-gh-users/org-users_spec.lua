@@ -3,7 +3,7 @@
 -- describe("format_documentation", function()
 --   it("should format the documentation correctly (duh)", function()
 --     local org_name = "AwesomeOrg"
---     ---@type ghcmp.OrgMemberEdge
+--     ---@type cmp.gh.users.OrgMemberEdge
 --     local edge = {
 --       node = {
 --         location = "Montréal",
@@ -31,7 +31,7 @@
 --
 --   it("should work even if there are missing fields", function()
 --     -- Given
---     ---@type ghcmp.users.org.CompletionItemData
+--     ---@type cmp.gh.users.users.org.CompletionItemData
 --     local data = {
 --       org_name = "AwesomeOrg",
 --       edge = {

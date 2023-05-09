@@ -4,16 +4,16 @@ local a = require "plenary.async"
 ---@alias BufferNumber number
 
 ---@class Source
----@field private cache ghcmp.Cache
+---@field private cache cmp.gh.users.Cache
 ---@field private github_owner string
 local source = {}
 
----@enum ghcmp.SocialAccountProviderIcon
+---@enum cmp.gh.users.SocialAccountProviderIcon
 local social_account_provider_icons = {
   TWITTER = "",
 }
 
----@param social_accounts ghcmp.SocialAccount[]
+---@param social_accounts cmp.gh.users.SocialAccount[]
 ---@return string
 local function format_social_accounts(social_accounts)
   local results = {}
@@ -28,7 +28,7 @@ local function format_social_accounts(social_accounts)
 end
 
 ---Format documentation for nvim-cmp
----@param data ghcmp.CompletionItemData
+---@param data cmp.gh.users.CompletionItemData
 ---@return string
 local function format_documentation(data)
   local edge = data.edge
@@ -51,16 +51,16 @@ local function format_documentation(data)
   return documentation
 end
 
----@class ghcmp.CompletionItem: lsp.CompletionItem
----@field data ghcmp.CompletionItemData
+---@class cmp.gh.users.CompletionItem: lsp.CompletionItem
+---@field data cmp.gh.users.CompletionItemData
 
----@class ghcmp.CompletionItemData
+---@class cmp.gh.users.CompletionItemData
 ---@field org_name string
----@field edge ghcmp.OrgMemberEdge
+---@field edge cmp.gh.users.OrgMemberEdge
 
 ---Format a single item for nvim-cmp
----@param edge ghcmp.OrgMemberEdge
----@return ghcmp.CompletionItem
+---@param edge cmp.gh.users.OrgMemberEdge
+---@return cmp.gh.users.CompletionItem
 local function format_item(edge)
   local member = edge.node
   local label = member.name or ""
@@ -82,7 +82,7 @@ local function format_item(edge)
 end
 
 --- Return a new instance of this source.
----@param cache ghcmp.Cache
+---@param cache cmp.gh.users.Cache
 ---@param github_owner string
 ---@return Source
 local function new(cache, github_owner)
@@ -161,7 +161,7 @@ end
 ---Resolve completion item (optional). This is called right before the completion is about to be displayed.
 ---Useful for setting the text shown in the documentation window (`completion_item.documentation`).
 ---@param self Source
----@param completion_item ghcmp.CompletionItem
+---@param completion_item cmp.gh.users.CompletionItem
 ---@param callback fun(completion_item: lsp.CompletionItem|nil)
 function source:resolve(completion_item, callback)
   completion_item.documentation = {
