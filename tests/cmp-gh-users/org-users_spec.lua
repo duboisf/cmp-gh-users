@@ -1,4 +1,4 @@
--- local source = require "gh-cmp.org_users"
+-- local source = require "cmp-gh-users.org_users"
 
 -- describe("format_documentation", function()
 --   it("should format the documentation correctly (duh)", function()

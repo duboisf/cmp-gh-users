@@ -1,7 +1,7 @@
 local M = {}
 local Job = require("plenary.job")
-local parse = require("gh-cmp.parser")
-local git = require("gh-cmp.git")
+local parse = require("cmp-gh-users.parser")
+local git = require("cmp-gh-users.git")
 
 local graphql_query = [[
   query ($org: String!, $endCursor: String) {
@@ -101,7 +101,7 @@ function M.org_users(github_owner, callback)
     "query=" .. graphql_query,
     on_stderr = function(err, data)
       vim.schedule_wrap(function()
-        vim.api.nvim_err_writeln("gh-cmp: could not get org users for " .. github_owner .. ": " .. data)
+        vim.api.nvim_err_writeln("cmp-gh-users: could not get org users for " .. github_owner .. ": " .. data)
       end)()
     end,
     on_exit = function(job, code)

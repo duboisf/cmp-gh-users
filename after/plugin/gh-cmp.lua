@@ -1,11 +1,11 @@
-local Cache = require "gh-cmp.cache"
-local Source = require "gh-cmp.source"
+local Cache = require "cmp-gh-users.cache"
+local Source = require "cmp-gh-users.source"
 local async = require "plenary.async"
-local fs = require "gh-cmp.fs"
-local github = require "gh-cmp.github"
+local fs = require "cmp-gh-users.fs"
+local github = require "cmp-gh-users.github"
 
 ---@type string
-local cache_file = vim.fn.stdpath("cache") .. "/gh-cmp/org-users.json"
+local cache_file = vim.fn.stdpath("cache") .. "/cmp-gh-users/org-users.json"
 
 github.when_in_github_repo(function(remote)
   local cache = Cache.new(cache_file, 60 * 60, fs)

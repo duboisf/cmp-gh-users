@@ -1,4 +1,4 @@
-local Cache = require("gh-cmp.cache")
+local Cache = require("cmp-gh-users.cache")
 
 -- local fsMock = {
 --   read_file = function(_)
@@ -26,4 +26,3 @@ describe("cache", function()
     assert.are.equal(cache_item, actual_cache_item.items)
   end)
 end)
-

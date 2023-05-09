@@ -1,4 +1,4 @@
-local github = require "gh-cmp.github"
+local github = require "cmp-gh-users.github"
 local a = require "plenary.async"
 
 ---@alias BufferNumber number

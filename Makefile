@@ -1,3 +1,3 @@
 
 test:
-	@nvim --headless -c "PlenaryBustedDirectory tests/gh-cmp/"
+	@nvim --headless -c "PlenaryBustedDirectory tests/cmp-gh-users/"
