@@ -1,15 +1,5 @@
----@alias cmp.gh.users.CacheKey string
----@alias cmp.gh.users.CacheItems table<cmp.gh.users.CacheKey, cmp.gh.users.CacheItem>
-
----@class cmp.gh.users.CacheItem
----@field last_update number The timestamp of the last update in seconds since epoch
----@field value lsp.CompletionResponse
-
----@class cmp.gh.users.cache.Fs
----@field read_file fun(path: string): nil|string, string|nil Read the filename `path`. On success, returns nil and the data from the file as a string. On error, returns the error as a string. Must be called within an async context
----@field write_file fun(path: string, data: string): nil|string Writes `data` to the filename `path`. Returns nil on success or an error message. Must be called with an async context
----@field dir_exists fun(path: string): nil|string, boolean|nil Returns a tuple: nil on success or an error message, and a boolean indicating whether the directory exists
----@field mkdirs fun(path: string): nil|string, boolean|nil Returns a tuple: nil on success or an error message, and a boolean indicating whether the directory was created successfully
+local cfg = require("cmp-gh-users.config").get()
+local log = require("cmp-gh-users.logger").new("cmp-gh-users.cache", cfg.log_level)
 
 return {
   ---Create a new instance of the cache.
@@ -17,35 +7,53 @@ return {
   ---@param max_age number Maximum age of a cache item in seconds
   ---@param fs cmp.gh.users.cache.Fs
   new = function(cache_file, max_age, fs)
-    local cache_dir = vim.fs.dirname(cache_file)
-
     ---@class cmp.gh.users.Cache
+    ---Provides a cache for completion responses, can be persisted to the filesystem and loaded from it, in an asyncronous fashion.
     local cache = {}
 
+    local cache_dir = vim.fs.dirname(cache_file)
+
+    ---@alias cmp.gh.users.CacheItems table<string, cmp.gh.users.CacheItem>
     ---@type cmp.gh.users.CacheItems
     local entries = {}
 
-    ---Get a cache item by key. Returns nil if the item does not exist or is older than `max_age`.
-    ---@param key cmp.gh.users.CacheKey
+    ---Get a cache item by key. Returns nil if the item does not exist.
+    ---@param key string
     ---@return lsp.CompletionResponse?
     function cache:get(key)
+      log("get key=" .. key, vim.log.levels.DEBUG)
       local entry = entries[key]
       if entry == nil then
-        return nil
-      end
-      if os.time() - entry.last_update > max_age then
         return nil
       end
       return entry.value
     end
 
+    ---Check if a cache item exists and is older than `max_age`.
+    ---If the item doesn't exist, it is considered expired.
+    ---@param key string
+    ---@return boolean
+    function cache:expired(key)
+      local entry = entries[key]
+      if entry == nil then
+        return true
+      end
+      local is_expired = os.time() - entry.last_update > max_age
+      log("expired key=" .. key .. " expired=" .. tostring(is_expired), vim.log.levels.DEBUG)
+      return is_expired
+    end
+
     ---Save a completion response to the cache. The timestamp of the last fetch is set to the current time.
     ---If the cache item already exists, it will be overwritten.
     ---@param self cmp.gh.users.Cache
-    ---@param key cmp.gh.users.CacheKey
+    ---@param key string
     ---@param value lsp.CompletionResponse
     ---@return nil
     function cache:set(key, value)
+      log("set key=" .. key, vim.log.levels.DEBUG)
+      ---@class cmp.gh.users.CacheItem
+      ---@field last_update number The timestamp of the last update in seconds since epoch
+      ---@field value lsp.CompletionResponse
       local cache_item = {
         last_update = os.time(),
         value = value,
@@ -66,6 +74,7 @@ return {
       local ok, parsed = pcall(vim.json.decode, data, { luanil = { object = true, array = true } })
       if ok and parsed ~= nil then
         entries = parsed
+        log("loaded successfully", vim.log.levels.DEBUG)
       end
       return nil
     end
@@ -75,13 +84,15 @@ return {
     ---@param self cmp.gh.users.Cache
     ---@return nil|string Error message if saving failed
     function cache:save()
+      log("save", vim.log.levels.DEBUG)
       if not fs.dir_exists(cache_dir) then
         local err, ok = fs.mkdirs(cache_dir)
         if err then
           return err
         end
         if not ok then
-          return "Failed to create cache directory"
+          log("failed to create cache directory", vim.log.levels.DEBUG)
+          return "failed to create cache directory"
         end
       end
       ---@type string
@@ -91,6 +102,7 @@ return {
     end
 
     local self = setmetatable({}, { __index = cache })
+
     return self
   end,
 }

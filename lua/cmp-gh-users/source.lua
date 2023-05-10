@@ -105,8 +105,8 @@ function source:get_debug_name()
   return "GitHub users"
 end
 
----Return LSP"s PositionEncodingKind.
----@NOTE: If this method is ommited, the default value will be `utf-16`.
+---Return LSP's PositionEncodingKind.
+---NOTE: If this method is omitted, the default value will be `utf-16`.
 ---@param self Source
 ---@return lsp.PositionEncodingKind
 function source:get_position_encoding_kind()
@@ -114,7 +114,7 @@ function source:get_position_encoding_kind()
 end
 
 ---Return the keyword pattern for triggering completion (optional).
----If this is ommited, nvim-cmp will use a default keyword pattern. See |cmp-config.completion.keyword_pattern|.
+---If this is omitted, nvim-cmp will use a default keyword pattern. See |cmp-config.completion.keyword_pattern|.
 ---@param self Source
 ---@return string
 function source:get_keyword_pattern()
@@ -130,36 +130,56 @@ end
 
 ---Invoke completion (required).
 ---@param self Source
----@param callback fun(response: lsp.CompletionResponse|nil)
+---@param callback fun(response: lsp.CompletionResponse?)
 function source:complete(_, callback)
   local response = self.cache:get(self.github_owner)
   if not response then
-    github.org_users(self.github_owner, function(ok, results)
-      response = { items = {}, isIncomplete = false }
-      if ok and results then
-        if results.data.organization then
-          local edges = results.data.organization.membersWithRole.edges
-          for _, edge in ipairs(edges) do
-            local completion_item = format_item(edge)
-            completion_item.data = {
-              org_name = results.data.organization.name,
-              edge = edge,
-            }
-            table.insert(response.items, completion_item)
-          end
-        else
-          print(self.github_owner .. " is not an organization")
-        end
-      end
-      callback(response)
-      self.cache:set(self.github_owner, response)
-      a.void(function()
-        self.cache:save()
-      end)()
-    end)
+    self:get_completion_response(callback)
   else
     callback(response)
+    if self.cache:expired(self.github_owner) then
+      -- Fetch the org members from GitHub to update the cache.
+      -- We already presented the cached response to the user,
+      -- but we want to update the cache for the next time.
+      self:get_completion_response()
+    end
   end
+end
+
+---Fetch the org members from GitHub to build the completion response and optionally pass it to the callback.
+---Persists the response in the cache.
+---@param self Source
+---@param callback? fun(response: lsp.CompletionResponse?)
+function source:get_completion_response(callback)
+  github.org_members(self.github_owner, function(ok, results)
+    local response = { items = {}, isIncomplete = false }
+    if ok and results then
+      if results.data.organization then
+        local edges = results.data.organization.membersWithRole.edges
+        for _, edge in ipairs(edges) do
+          local completion_item = format_item(edge)
+          completion_item.data = {
+            org_name = results.data.organization.name,
+            edge = edge,
+          }
+          table.insert(response.items, completion_item)
+        end
+      else
+        print(self.github_owner .. " is not an organization")
+      end
+    end
+    if callback then
+      if type(callback) == "function" then
+        callback(response)
+      else
+        error("callback must be a function")
+      end
+    end
+    self.cache:set(self.github_owner, response)
+    a.void(function()
+      self.cache:save()
+    end)()
+  end)
 end
 
 ---Resolve completion item (optional). This is called right before the completion is about to be displayed.

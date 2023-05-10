@@ -1,7 +1,12 @@
-local M = {}
+---@class cmp.gh.users.GitHubApi
+---Client for querying the GitHub API.
+---Relies on the `gh` command-line tool being installed.
+local github = {}
+
 local Job = require("plenary.job")
-local parse = require("cmp-gh-users.parser")
+local cfg = require("cmp-gh-users.config"):get()
 local git = require("cmp-gh-users.git")
+local log = require("cmp-gh-users.logger").new("cmp-gh-users.github", cfg.log_level)
 
 local graphql_query = [[
   query ($org: String!, $endCursor: String) {
@@ -58,8 +63,8 @@ local graphql_query = [[
 ---@field endCursor? string
 
 ---@alias cmp.gh.users.Role
----| ""ADMIN""
----| ""MEMBER""
+---| "ADMIN"
+---| "MEMBER"
 
 ---@class cmp.gh.users.OrgMemberEdge
 ---@field node cmp.gh.users.User
@@ -87,9 +92,11 @@ local graphql_query = [[
 ---@field provider string
 ---@field url string
 
----@param org_name string
+---Gets the members of a GitHub organization.
+---@param org_name string The name of the GitHub organization
 ---@param callback fun(ok: boolean, result: cmp.gh.users.OrgMembersQueryResult?)
-function M.org_users(org_name, callback)
+function github.org_members(org_name, callback)
+  log("querying org members for " .. org_name, vim.log.levels.DEBUG)
   local job = Job:new({
     "gh",
     "api",
@@ -108,26 +115,52 @@ function M.org_users(org_name, callback)
         job:result()[1],
         { luanil = { object = true, array = true } }
       )
+      log("org members query success? " .. tostring(ok), vim.log.levels.DEBUG)
       callback(ok, parsed)
     end,
   })
   job:start()
 end
 
+---Parses a git remote.
+---@param remote string The remote URL, given by `git remote get-url --push <remote>`.
+---@return cmp.gh.users.GitHubRemote|nil
+function github.parse_git_remote(remote)
+  if not (remote:match("^git@github.com:") or remote:match("^https://github.com/")) then
+    return nil
+  end
+  remote = string.gsub(remote, ".git$", "")
+  local owner, repo = remote:match("github.com.(.+)/(.+)")
+  ---@class cmp.gh.users.GitHubRemote
+  local GitHubRemote = {
+    ---The owner of the GitHub repository.
+    owner = owner,
+    ---The name of the GitHub repository.
+    repo = repo,
+  }
+  GitHubRemote = setmetatable(GitHubRemote, {
+    __tostring = function(self)
+      return string.format("GitHubRemote(owner=%s, repo=%s)", self.owner, self.repo)
+    end,
+  })
+  return GitHubRemote
+end
+
 ---Do something when cwd is inside a GitHub repo.
 ---
 ---The callback is only called when the current working
 ---directory is inside a git repository that has a remote
----named `origin` that is a GitHub repository.
----@param callback fun(remote: cmp.gh.users.GitHubRemoteUrl)
+---named `origin` which is a GitHub repository.
+---@param callback fun(remote: cmp.gh.users.GitHubRemote)
 ---@return nil
-function M.when_in_github_repo(callback)
+function github.when_in_github_repo(callback)
   git.remote("origin", function(remote)
-    local parsed = parse.github_remote_line(remote)
-    if parsed then
-      callback(parsed)
+    local github_remote = github.parse_git_remote(remote)
+    if github_remote then
+      log("cwd inside github repo, " .. tostring(github_remote), vim.log.levels.DEBUG)
+      callback(github_remote)
     end
   end)
 end
 
-return M
+return github

@@ -1,3 +1,5 @@
+---@class cmp.gh.users.Git
+---Provides functions for working with git repositories.
 local git = {}
 
 local Job = require("plenary.job")
