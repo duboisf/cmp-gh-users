@@ -43,7 +43,7 @@ local graphql_query = [[
 ---@field data cmp.gh.users.OrgMembersQueryResultData
 
 ---@class cmp.gh.users.OrgMembersQueryResultData
----@field organization cmp.gh.users.Organization
+---@field organization cmp.gh.users.Organization?
 
 ---@class cmp.gh.users.Organization
 ---@field name string The name of the organization
@@ -87,34 +87,28 @@ local graphql_query = [[
 ---@field provider string
 ---@field url string
 
----@param github_owner string
+---@param org_name string
 ---@param callback fun(ok: boolean, result: cmp.gh.users.OrgMembersQueryResult?)
-function M.org_users(github_owner, callback)
+function M.org_users(org_name, callback)
   local job = Job:new({
     "gh",
     "api",
     "--paginate",
     "graphql",
     "-F",
-    "org=" .. github_owner,
+    "org=" .. org_name,
     "-f",
     "query=" .. graphql_query,
-    on_stderr = function(err, data)
-      vim.schedule_wrap(function()
-        vim.api.nvim_err_writeln("cmp-gh-users: could not get org users for " .. github_owner .. ": " .. data)
-      end)()
-    end,
-    on_exit = function(job, code)
-      if code ~= 0 then
-        callback(false, nil)
-      else
-        local ok, parsed = pcall(
-          vim.json.decode,
-          job:result()[1],
-          { luanil = { object = true, array = true } }
-        )
-        callback(ok, parsed)
-      end
+    on_exit = function(job)
+      -- try to parse the result regardless of the exit code
+      -- because in the case of a non-zero exit code, it might
+      -- return a json response with an error message
+      local ok, parsed = pcall(
+        vim.json.decode,
+        job:result()[1],
+        { luanil = { object = true, array = true } }
+      )
+      callback(ok, parsed)
     end,
   })
   job:start()

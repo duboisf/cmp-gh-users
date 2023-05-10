@@ -137,17 +137,21 @@ function source:complete(_, callback)
     github.org_users(self.github_owner, function(ok, results)
       response = { items = {}, isIncomplete = false }
       if ok and results then
-        local edges = results.data.organization.membersWithRole.edges
-        for _, edge in ipairs(edges) do
-          local completion_item = format_item(edge)
-          completion_item.data = {
-            org_name = results.data.organization.name,
-            edge = edge,
-          }
-          table.insert(response.items, completion_item)
+        if results.data.organization then
+          local edges = results.data.organization.membersWithRole.edges
+          for _, edge in ipairs(edges) do
+            local completion_item = format_item(edge)
+            completion_item.data = {
+              org_name = results.data.organization.name,
+              edge = edge,
+            }
+            table.insert(response.items, completion_item)
+          end
+        else
+          print(self.github_owner .. " is not an organization")
         end
-        callback(response)
       end
+      callback(response)
       self.cache:set(self.github_owner, response)
       a.void(function()
         self.cache:save()
