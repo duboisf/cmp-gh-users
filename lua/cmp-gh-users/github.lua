@@ -1,11 +1,13 @@
----@class cmp.gh.users.GitHubApi
----Client for querying the GitHub API.
+---Module for wrapping the `gh` cli.
+---Offer various GitHub related functionality like querying the GitHub API,
+---parsing GitHub remotes, checking if we're in a GitHub repository, etc.
 ---Relies on the `gh` command-line tool being installed.
+---@class cmp.gh.users.GitHub
+---@field git cmp.gh.users.Git
+---@field Job Job
 local github = {}
 
-local Job = require("plenary.job")
 local cfg = require("cmp-gh-users.config"):get()
-local git = require("cmp-gh-users.git")
 local log = require("cmp-gh-users.logger").new("cmp-gh-users.github", cfg.log_level)
 
 local graphql_query = [[
@@ -95,9 +97,9 @@ local graphql_query = [[
 ---Gets the members of a GitHub organization.
 ---@param org_name string The name of the GitHub organization
 ---@param callback fun(ok: boolean, result: cmp.gh.users.OrgMembersQueryResult?)
-function github.org_members(org_name, callback)
+function github:org_members(org_name, callback)
   log("querying org members for " .. org_name, vim.log.levels.DEBUG)
-  local job = Job:new({
+  local job = self.Job:new({
     "gh",
     "api",
     "--paginate",
@@ -122,45 +124,70 @@ function github.org_members(org_name, callback)
   job:start()
 end
 
----Parses a git remote.
+local Remote = {}
+
+---Creates a new GitHubRemote.
+---@param owner string The owner of the GitHub repository.
+---@param repo string The name of the GitHub repository.
+---@return cmp.gh.users.GitHub.Remote
+function Remote.new(owner, repo)
+  local mt = {
+    __tostring = function(self)
+      return string.format("GitHubRemote(owner=%s, repo=%s)", self.owner, self.repo)
+    end,
+  }
+  ---Describes a GitHub remote.
+  ---@class cmp.gh.users.GitHub.Remote
+  ---@field owner string The owner of the GitHub repository.
+  ---@field repo string The name of the GitHub repository.
+  return setmetatable({ owner = owner, repo = repo }, mt)
+end
+
+---Parses a git remote. Returns nil if the given remote is not a GitHub remote.
 ---@param remote string The remote URL, given by `git remote get-url --push <remote>`.
----@return cmp.gh.users.GitHubRemote|nil
-function github.parse_git_remote(remote)
+---@return cmp.gh.users.GitHub.Remote|nil
+function github:parse_git_remote(remote)
   if not (remote:match("^git@github.com:") or remote:match("^https://github.com/")) then
     return nil
   end
   remote = string.gsub(remote, ".git$", "")
   local owner, repo = remote:match("github.com.(.+)/(.+)")
-  ---@class cmp.gh.users.GitHubRemote
-  local GitHubRemote = {
-    ---The owner of the GitHub repository.
-    owner = owner,
-    ---The name of the GitHub repository.
-    repo = repo,
-  }
-  GitHubRemote = setmetatable(GitHubRemote, {
-    __tostring = function(self)
-      return string.format("GitHubRemote(owner=%s, repo=%s)", self.owner, self.repo)
-    end,
-  })
-  return GitHubRemote
+  return Remote.new(owner, repo)
 end
 
----Do something when cwd is inside a GitHub repo.
----
----The callback is only called when the current working
+---Call the supplied callback with the GitHub remote if the current
 ---directory is inside a git repository that has a remote
 ---named `origin` which is a GitHub repository.
----@param callback fun(remote: cmp.gh.users.GitHubRemote)
+---Otherwise, call the callback with `nil`.
+---@param callback fun(remote: cmp.gh.users.GitHub.Remote|nil)
 ---@return nil
-function github.when_in_github_repo(callback)
-  git.remote("origin", function(remote)
-    local github_remote = github.parse_git_remote(remote)
-    if github_remote then
-      log("cwd inside github repo, " .. tostring(github_remote), vim.log.levels.DEBUG)
-      callback(github_remote)
+function github:with_remote(callback)
+  self.git.remote("origin", function(remote)
+    if remote then
+      local github_remote = github:parse_git_remote(remote)
+      if github_remote then
+        log("cwd inside github repo, " .. tostring(github_remote), vim.log.levels.DEBUG)
+        callback(github_remote)
+      end
+    else
+      callback(nil)
     end
   end)
 end
 
-return github
+return {
+  ---Creates a new `cmp.gh.users.GitHub` instance.
+  ---Accepts optional `git` and `Job` modules for dependency injection, which is useful for testing.
+  ---If not provided, the default modules will be used.
+  ---@param git? cmp.gh.users.Git
+  ---@param Job? Job
+  ---@return cmp.gh.users.GitHub
+  new = function(git, Job)
+    local self = setmetatable({}, { __index = github })
+
+    self.git = git or require("cmp-gh-users.git")
+    self.Job = Job or require("plenary.job")
+
+    return self
+  end
+}

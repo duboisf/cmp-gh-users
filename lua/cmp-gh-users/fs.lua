@@ -4,13 +4,11 @@
 local fs = {}
 
 local a = require("plenary.async")
-local cfg = require("cmp-gh-users.config").get()
 
 ---Read the filename `path`.
 ---On success, returns nil and the data from the file as a string.
 ---On error, returns the error as a string.
 ---Uses plenary.async so must be called within an async context.
----@async
 ---@param path string
 ---@return nil|string err, string|nil data
 function fs.read_file(path)
@@ -41,7 +39,6 @@ end
 ---Writes `data` to the filename `path`.
 ---Returns nil on success or an error message.
 ---Uses plenary.async so must be called within an async context.
----@async
 ---@param path string
 ---@param data string
 ---@return nil|string err
@@ -59,7 +56,6 @@ end
 
 ---Returns a tuple: nil on success or an error message, and a boolean indicating whether the directory exists
 ---Must be called within an async context.
----@async
 ---@param path string
 ---@return nil|string err, boolean exists
 function fs.dir_exists(path)

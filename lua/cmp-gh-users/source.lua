@@ -1,4 +1,5 @@
-local github = require "cmp-gh-users.github"
+local GitHub = require("cmp-gh-users.github")
+local gh = GitHub.new()
 local a = require "plenary.async"
 
 ---@alias BufferNumber number
@@ -151,7 +152,7 @@ end
 ---@param self Source
 ---@param callback? fun(response: lsp.CompletionResponse?)
 function source:get_completion_response(callback)
-  github.org_members(self.github_owner, function(ok, results)
+  gh:org_members(self.github_owner, function(ok, results)
     local response = { items = {}, isIncomplete = false }
     if ok and results then
       if results.data.organization then
