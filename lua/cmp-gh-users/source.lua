@@ -1,5 +1,7 @@
 local GitHub = require("cmp-gh-users.github")
 local a = require "plenary.async"
+local cfg = require("cmp-gh-users.config").get()
+local log = require("cmp-gh-users.logger").new("cmp-gh-users.source", cfg.log_level)
 
 ---@alias BufferNumber number
 
@@ -7,6 +9,7 @@ local a = require "plenary.async"
 ---@field private cache cmp.gh.users.Cache
 ---@field private github_owner string
 ---@field private gh cmp.gh.users.GitHub
+---@field private fetching boolean Are we fetching users?
 local source = {}
 
 ---@class cmp.gh.users.Source.Config
@@ -127,14 +130,23 @@ end
 
 ---Invoke completion (required).
 ---@param self cmp.gh.users.Source
+---@param ctx cmp.Context
 ---@param callback fun(response: lsp.CompletionResponse?)
-function source:complete(_, callback)
+function source:complete(ctx, callback)
   local response = self.cache:get(self.github_owner)
-  if not response then
+  if self.fetching then
+    -- We are already fetching the users, so we don't want to block the completion.
+    -- We will call the callback specifying that it's not complete
+    log("Currently fetching users, returning isIncomplete = true", vim.log.levels.DEBUG)
+    callback({ isIncomplete = true })
+  elseif not response then
+    log("Fetching users", vim.log.levels.DEBUG)
     self:get_completion_response(callback)
   else
+    log("Returning cached response", vim.log.levels.DEBUG)
     callback(response)
     if self.cache:expired(self.github_owner) then
+      log("Cache expired, fetching users", vim.log.levels.DEBUG)
       -- Fetch the org members from GitHub to update the cache.
       -- We already presented the cached response to the user,
       -- but we want to update the cache for the next time.
@@ -148,6 +160,7 @@ end
 ---@param self cmp.gh.users.Source
 ---@param callback? fun(response: lsp.CompletionResponse?)
 function source:get_completion_response(callback)
+  self.fetching = true
   self.gh:org_members(self.github_owner, function(ok, results)
     local response = { items = {}, isIncomplete = false }
     if ok and results then
@@ -175,6 +188,7 @@ function source:get_completion_response(callback)
     self.cache:set(self.github_owner, response)
     a.void(function()
       self.cache:save()
+      self.fetching = false
     end)()
   end)
 end

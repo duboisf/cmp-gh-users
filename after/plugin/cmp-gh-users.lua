@@ -11,7 +11,7 @@ GitHub.new():with_remote(function(remote)
       local source = Source.new(remote.owner, cache)
       vim.schedule(function()
         ---@diagnostic disable-next-line: param-type-mismatch
-        require("cmp").register_source("gh-users", source)
+        require("cmp").register_source("gh_users", source)
       end)
     end)()
   end

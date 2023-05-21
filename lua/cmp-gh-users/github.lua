@@ -117,7 +117,7 @@ function github:org_members(org_name, callback)
         job:result()[1],
         { luanil = { object = true, array = true } }
       )
-      log("org members query success? " .. tostring(ok), vim.log.levels.DEBUG)
+      log("qery org members query success=" .. tostring(ok), vim.log.levels.DEBUG)
       callback(ok, parsed)
     end,
   })

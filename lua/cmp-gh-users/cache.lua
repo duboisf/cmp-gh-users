@@ -70,7 +70,9 @@ function cache:load()
   log("load from path " .. self.config.path, vim.log.levels.DEBUG)
   local err, data = self.fs.read_file(self.config.path)
   if err then
-    log("failed to load: " .. err, vim.log.levels.DEBUG)
+    if not err:match("ENOENT") then
+      log("failed to load: " .. err, vim.log.levels.DEBUG)
+    end
     return err
   end
   ---@type boolean, cmp.gh.users.CacheItems?
