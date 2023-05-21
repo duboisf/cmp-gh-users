@@ -73,11 +73,9 @@ end
 ---@return cmp.gh.users.CompletionItem
 local function format_item(edge)
   local member = edge.node
-  local label = member.name or ""
-  if label == "" then
-    label = "@" .. member.login
-  else
-    label = label .. " (@" .. member.login .. ")"
+  local label = "@" .. member.login
+  if member.name and member.name ~= "" then
+    label = label .. " (" .. member.name .. ")"
   end
   return {
     label = label,
