@@ -1,4 +1,7 @@
----@class cmp.gh.users.cache.Fs
+local cfg = require("cmp-gh-users.config").get()
+local log = require("cmp-gh-users.logger").new("cmp-gh-users.fs", cfg.log_level)
+
+---@class cmp.gh.users.Fs
 ---Contains filesystem related functions.
 ---Leverages the plenary.async library, so these functions must be called within an async context (e.g. `a.run()`).
 local fs = {}
@@ -12,6 +15,7 @@ local a = require("plenary.async")
 ---@param path string
 ---@return nil|string err, string|nil data
 function fs.read_file(path)
+  log("read_file path=" .. path, vim.log.levels.DEBUG)
   local err
   local fd
   err, fd = a.uv.fs_open(path, "r", 438)

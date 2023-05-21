@@ -2,8 +2,14 @@ local M = {}
 
 ---@class cmp.gh.users.Config
 local config = {
-  ---The path to the cache file. Defaults to `vim.fn.stdpath("cache") .. "/cmp-gh-users.json"`.
-  cache_file = vim.fn.stdpath("cache") .. "/cmp-gh-users.json",
+  ---Settings related to the cache.
+  ---@class cmp.gh.users.Config.Cache
+  cache = {
+    ---The maximum age of a cache item in seconds. Defaults to 1 hour.
+    max_age = 60 * 60, -- 1 hour
+    ---The path to the cache file. Defaults to `vim.fn.stdpath("cache") .. "/cmp-gh-users.json"`.
+    path = vim.fn.stdpath("cache") .. "/cmp-gh-users.json",
+  },
   ---The minimum vim log level to log, see `:help vim.log.levels`.
   log_level = vim.log.levels.WARN,
 }

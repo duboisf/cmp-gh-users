@@ -1,13 +1,19 @@
 local GitHub = require("cmp-gh-users.github")
-local gh = GitHub.new()
 local a = require "plenary.async"
 
 ---@alias BufferNumber number
 
----@class Source
+---@class cmp.gh.users.Source
 ---@field private cache cmp.gh.users.Cache
 ---@field private github_owner string
+---@field private gh cmp.gh.users.GitHub
 local source = {}
+
+---@class cmp.gh.users.Source.Config
+local default_config = {
+  fs = require("cmp-gh-users.fs"),
+  gh = GitHub.new(),
+}
 
 ---@enum cmp.gh.users.SocialAccountProviderIcon
 local social_account_provider_icons = {
@@ -82,25 +88,15 @@ local function format_item(edge)
   }
 end
 
---- Return a new instance of this source.
----@param cache cmp.gh.users.Cache
----@param github_owner string
----@return Source
-local function new(cache, github_owner)
-  local self = { cache = cache, github_owner = github_owner }
-  self = setmetatable(self, { __index = source })
-  return self
-end
-
 ---Return whether this source is available in the current context or not (optional).
----@param self Source
+---@param self cmp.gh.users.Source
 ---@return boolean
 function source:is_available()
   return true
 end
 
 ---Return the debug name of this source (optional).
----@param self Source
+---@param self cmp.gh.users.Source
 ---@return string
 function source:get_debug_name()
   return "GitHub users"
@@ -108,7 +104,7 @@ end
 
 ---Return LSP's PositionEncodingKind.
 ---NOTE: If this method is omitted, the default value will be `utf-16`.
----@param self Source
+---@param self cmp.gh.users.Source
 ---@return lsp.PositionEncodingKind
 function source:get_position_encoding_kind()
   return "utf-16"
@@ -116,21 +112,21 @@ end
 
 ---Return the keyword pattern for triggering completion (optional).
 ---If this is omitted, nvim-cmp will use a default keyword pattern. See |cmp-config.completion.keyword_pattern|.
----@param self Source
+---@param self cmp.gh.users.Source
 ---@return string
 function source:get_keyword_pattern()
   return [[\k\+]]
 end
 
 ---Return trigger characters for triggering completion (optional).
----@param self Source
+---@param self cmp.gh.users.Source
 ---@return string[]
 function source:get_trigger_characters()
   return { "@" }
 end
 
 ---Invoke completion (required).
----@param self Source
+---@param self cmp.gh.users.Source
 ---@param callback fun(response: lsp.CompletionResponse?)
 function source:complete(_, callback)
   local response = self.cache:get(self.github_owner)
@@ -149,10 +145,10 @@ end
 
 ---Fetch the org members from GitHub to build the completion response and optionally pass it to the callback.
 ---Persists the response in the cache.
----@param self Source
+---@param self cmp.gh.users.Source
 ---@param callback? fun(response: lsp.CompletionResponse?)
 function source:get_completion_response(callback)
-  gh:org_members(self.github_owner, function(ok, results)
+  self.gh:org_members(self.github_owner, function(ok, results)
     local response = { items = {}, isIncomplete = false }
     if ok and results then
       if results.data.organization then
@@ -185,7 +181,7 @@ end
 
 ---Resolve completion item (optional). This is called right before the completion is about to be displayed.
 ---Useful for setting the text shown in the documentation window (`completion_item.documentation`).
----@param self Source
+---@param self cmp.gh.users.Source
 ---@param completion_item cmp.gh.users.CompletionItem
 ---@param callback fun(completion_item: lsp.CompletionItem|nil)
 function source:resolve(completion_item, callback)
@@ -197,7 +193,7 @@ function source:resolve(completion_item, callback)
 end
 
 ---Executed after the item was selected.
----@param self Source
+---@param self cmp.gh.users.Source
 ---@param completion_item lsp.CompletionItem
 ---@param callback fun(completion_item: lsp.CompletionItem|nil)
 function source:execute(completion_item, callback)
@@ -205,5 +201,21 @@ function source:execute(completion_item, callback)
 end
 
 return {
-  new = new,
+  ---Return a new instance of this source.
+  ---Accepts a cache for dependency injection which is useful for testing.
+  ---@param github_owner string The GitHub owner (user or organization)
+  ---@param cache cmp.gh.users.Cache
+  ---@param config? cmp.gh.users.Source.Config
+  ---@return cmp.gh.users.Source
+  new = function(github_owner, cache, config)
+    config = vim.tbl_deep_extend("force", default_config, config or {})
+    local self = {
+      cache = cache,
+      fs = config.fs,
+      gh = config.gh,
+      github_owner = github_owner,
+    }
+    self = setmetatable(self, { __index = source })
+    return self
+  end
 }

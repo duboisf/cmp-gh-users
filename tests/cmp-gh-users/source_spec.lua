@@ -1,6 +1,7 @@
 describe("format_documentation", function()
+  local source = require "cmp-gh-users.source"
+
   it("should format the documentation correctly (duh)", function()
-    local source = require "cmp-gh-users.source"
     local org_name = "AwesomeOrg"
     ---@type cmp.gh.users.OrgMemberEdge
     local edge = {
@@ -24,8 +25,8 @@ Located in Montréal
  [@somebody](https://twitter.com/somebody)
 
 I am a human]]
-    -- local actual = source.format_documentation({ org_name = org_name, edge = edge })
-    -- assert.are.equal(expected, actual)
+    local actual = source.format_documentation({ org_name = org_name, edge = edge })
+    assert.are.equal(expected, actual)
   end)
 
   it("should work even if there are missing fields", function()
