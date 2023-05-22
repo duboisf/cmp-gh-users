@@ -15,6 +15,12 @@ local init = function()
       a.void(function()
         cache:load()
         local source = Source.new(remote.owner, cache)
+        if cache:expired(remote.owner) then
+          -- Prepare completion response in advance.
+          -- It gets persisted to the cache so that it will be available
+          -- immediately on the next completion request.
+          source:get_completion_response()
+        end
         vim.schedule(function()
           ---@diagnostic disable-next-line: param-type-mismatch
           require("cmp").register_source("gh_users", source)
