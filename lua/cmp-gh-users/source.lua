@@ -130,31 +130,33 @@ end
 ---@param self cmp.gh.users.Source
 ---@param ctx cmp.Context
 ---@param callback fun(response: lsp.CompletionResponse?)
-function source:complete(ctx, callback)
-  local response = self.cache:get(self.github_owner)
+function source:complete(_, callback)
   if self.fetching then
     -- We are already fetching the users, so we don't want to block the completion.
     -- We will call the callback specifying that it's not complete
-    log("Currently fetching users, returning isIncomplete = true", vim.log.levels.DEBUG)
-    callback({ isIncomplete = true })
-  elseif not response then
-    log("Fetching users", vim.log.levels.DEBUG)
-    self:get_completion_response(callback)
+    log("complete: Currently fetching users, returning empty list", vim.log.levels.DEBUG)
+    callback()
   else
-    log("Returning cached response", vim.log.levels.DEBUG)
-    callback(response)
-    if self.cache:expired(self.github_owner) then
-      log("Cache expired, fetching users", vim.log.levels.DEBUG)
-      -- Fetch the org members from GitHub to update the cache.
-      -- We already presented the cached response to the user,
-      -- but we want to update the cache for the next time.
-      self:get_completion_response()
+    local response = self.cache:get(self.github_owner)
+    if response then
+      log("complete: Returning cached response", vim.log.levels.DEBUG)
+      callback(response)
+    else
+      log("complete: Fetching users", vim.log.levels.DEBUG)
+      self:get_completion_response(callback)
+      if self.cache:expired(self.github_owner) then
+        log("complete: Cache expired, fetching users", vim.log.levels.DEBUG)
+        -- Fetch the org members from GitHub to update the cache.
+        -- We already presented the cached response to the user,
+        -- but we want to update the cache for the next time.
+        self:get_completion_response()
+      end
     end
   end
 end
 
 ---Fetch the org members from GitHub to build the completion response and optionally pass it to the callback.
----Persists the response in the cache.
+---Persists the response to the cache.
 ---@param self cmp.gh.users.Source
 ---@param callback? fun(response: lsp.CompletionResponse?)
 function source:get_completion_response(callback)
@@ -173,7 +175,7 @@ function source:get_completion_response(callback)
           table.insert(response.items, completion_item)
         end
       else
-        print(self.github_owner .. " is not an organization")
+        log("get_completion_response: " .. self.github_owner .. " is not an organization", vim.log.levels.DEBUG)
       end
     end
     if callback then
@@ -185,6 +187,7 @@ function source:get_completion_response(callback)
     end
     self.cache:set(self.github_owner, response)
     a.void(function()
+      log("get_completion_response: saving cache to filesystem", vim.log.levels.DEBUG)
       self.cache:save()
       self.fetching = false
     end)()
