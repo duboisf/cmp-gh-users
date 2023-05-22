@@ -23,14 +23,12 @@ end
 ---@param module string The lua module name.
 ---@param min_level number The minimum log level, see `:help vim.log.levels`.
 function logger.new(module, min_level)
-  assert(type(module) == "string", "module must be a string")
-  assert(type(min_level) == "number", "min_level must be a number")
+  vim.validate({ module = { module, "string" }, min_level = { min_level, "number" } })
   --Log a message.
   ---@param msg string The message to log.
   ---@param lvl number The log level, see `:help vim.log.levels`.
   return function(msg, lvl)
-    assert(type(msg) == "string", "msg must be a string")
-    assert(type(lvl) == "number", "lvl must be a number")
+    vim.validate({ msg = { msg, "string" }, lvl = { lvl, "number" } })
     log(module, min_level, msg, lvl)
   end
 end

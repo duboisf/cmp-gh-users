@@ -128,24 +128,26 @@ end
 
 ---Invoke completion (required).
 ---@param self cmp.gh.users.Source
----@param ctx cmp.Context
+---@param params cmp.SourceCompletionApiParams
 ---@param callback fun(response: lsp.CompletionResponse?)
-function source:complete(_, callback)
+function source:complete(params, callback)
+  if not vim.tbl_contains(cfg.filetypes, params.context.filetype) then
+    callback()
+    return
+  end
   if self.fetching then
-    -- We are already fetching the users, so we don't want to block the completion.
-    -- We will call the callback specifying that it's not complete
-    log("complete: Currently fetching users, returning empty list", vim.log.levels.DEBUG)
+    log("complete: currently fetching users", vim.log.levels.DEBUG)
     callback()
   else
     local response = self.cache:get(self.github_owner)
     if response then
-      log("complete: Returning cached response", vim.log.levels.DEBUG)
+      log("complete: returning cached response", vim.log.levels.DEBUG)
       callback(response)
     else
-      log("complete: Fetching users", vim.log.levels.DEBUG)
+      log("complete: fetching users", vim.log.levels.DEBUG)
       self:get_completion_response(callback)
       if self.cache:expired(self.github_owner) then
-        log("complete: Cache expired, fetching users", vim.log.levels.DEBUG)
+        log("complete: cache expired, fetching users", vim.log.levels.DEBUG)
         -- Fetch the org members from GitHub to update the cache.
         -- We already presented the cached response to the user,
         -- but we want to update the cache for the next time.
