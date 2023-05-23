@@ -6,8 +6,8 @@ local config = {
   -- Settings related to the cache.
   ---@class cmp.gh.users.Config.Cache
   cache = {
-    -- The maximum age of a cache item in seconds. Defaults to 1 hour.
-    max_age = 60 * 60, -- 1 hour
+    -- The maximum age of a cache item in seconds. Defaults to 12 hours.
+    max_age = 12 * 60 * 60, -- 12 hours
     -- The path to the cache file. Defaults to `vim.fn.stdpath("cache") .. "/cmp-gh-users.json"`.
     path = vim.fn.stdpath("cache") .. "/cmp-gh-users.json",
   },
