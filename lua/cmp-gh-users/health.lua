@@ -58,18 +58,25 @@ local function report_binary(name, args)
 end
 
 function healh.check()
-  local co, is_main = coroutine.running()
-  print("co", co, "is_main", is_main)
   local ok = false
+
   ok, _ = pcall(require, "cmp")
   if ok then
-    vim.health.report_ok("cmp is installed")
+    vim.health.report_ok("hrsh7th/nvim-cmp is installed")
   else
-    vim.health.report_error("cmp", "You must install the nvim-cmp plugin")
+    vim.health.report_error("cmp", "You must install the hrsh7th/nvim-cmp plugin")
+  end
+
+  ok, _ = pcall(require, "plenary")
+  if ok then
+    vim.health.report_ok("nvim-lua/plenary.nvim is installed")
+  else
+    vim.health.report_error("plenary", "You must install the nvim-lua/plenary.nvim plugin")
   end
 
   report_binary("git", { "--version" })
   report_binary("gh", { "--version" })
+
   local output = ""
   ok, output = sync_spawn("gh", { "auth", "status" })
   if ok then

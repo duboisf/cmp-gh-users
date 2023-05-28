@@ -17,6 +17,7 @@ Complete GitHub organization usernames directly from Neovim! Offering seamless a
 
 - [Neovim](https://github.com/neovim/neovim) (0.9 or later) :pencil2:
 - [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) :clipboard:
+- [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) :gear:
 - [GitHub CLI (gh)](https://github.com/cli/cli#installation) :octocat:
 
 ## :floppy_disk: Installation
@@ -24,22 +25,25 @@ Complete GitHub organization usernames directly from Neovim! Offering seamless a
 **With [lazy.nvim](https://github.com/folke/lazy.nvim):**
 
 ```lua
-    {
-        'duboisf/cmp-gh-users',
-        opts = {
-          -- your configuration comes here, these are the defaults
-          cache = {
-            -- The maximum age of a cache item in seconds
-            max_age = 12 * 60 * 60, -- 12 hours
-            -- The path to the cache file
-            path = vim.fn.stdpath("cache") .. "/cmp-gh-users.json",
-          },
-          -- Filetypes to enable this source for
-          filetypes = { "gitcommit", "markdown" },
-          -- The minimum vim log level to log, see `:help vim.log.levels`
-          log_level = vim.log.levels.WARN,
-        }
-    }
+{
+  'duboisf/cmp-gh-users',
+  opts = {
+    -- your configuration comes here, these are the defaults
+    cache = {
+      -- The maximum age of a cache item in seconds
+      max_age = 12 * 60 * 60, -- 12 hours
+      -- The path to the cache file
+      path = vim.fn.stdpath("cache") .. "/cmp-gh-users.json",
+    },
+    -- Filetypes to enable this source for
+    filetypes = { "gitcommit", "markdown" },
+    -- The minimum vim log level to log, see `:help vim.log.levels`
+    log_level = vim.log.levels.WARN,
+  }, 
+  dependencies = {
+    'nvim-lua/plenary.nvim',
+  }
+}
 ```
 
 The default configuration should be fine and work out-of-the-box.
