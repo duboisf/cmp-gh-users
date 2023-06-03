@@ -10,7 +10,7 @@ local github = {}
 local cfg = require("cmp-gh-users.config"):get()
 local log = require("cmp-gh-users.logger").new("cmp-gh-users.github", cfg.log_level)
 
-local graphql_query = [[
+local graphql_users_query = [[
   query ($org: String!, $endCursor: String) {
     organization(login: $org) {
       name
@@ -50,9 +50,9 @@ local graphql_query = [[
 ---@field data cmp.gh.users.OrgMembersQueryResultData
 
 ---@class cmp.gh.users.OrgMembersQueryResultData
----@field organization cmp.gh.users.Organization?
+---@field organization cmp.gh.users.OrganizationMembers?
 
----@class cmp.gh.users.Organization
+---@class cmp.gh.users.OrganizationMembers
 ---@field name string The name of the organization
 ---@field membersWithRole cmp.gh.users.OrgMemberConnection
 
@@ -107,7 +107,7 @@ function github:org_members(org_name, callback)
     "-F",
     "org=" .. org_name,
     "-f",
-    "query=" .. graphql_query,
+    "query=" .. graphql_users_query,
     on_exit = function(job)
       -- try to parse the result regardless of the exit code
       -- because in the case of a non-zero exit code, it might
@@ -118,6 +118,79 @@ function github:org_members(org_name, callback)
         { luanil = { object = true, array = true } }
       )
       log("qery org members query success=" .. tostring(ok), vim.log.levels.DEBUG)
+      callback(ok, parsed)
+    end,
+  })
+  job:start()
+end
+
+local graphql_teams_query = [[
+  query($org: String!, $endCursor: String) {
+    organization(login: $org) {
+      name
+      teams(first:100, after: $endCursor) {
+        edges {
+          node {
+            name,
+            combinedSlug,
+            description
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+]]
+
+---@class cmp.gh.users.OrgTeamsQueryResult
+---@field data cmp.gh.users.OrgTeamsQueryResultData
+
+---@class cmp.gh.users.OrgTeamsQueryResultData
+---@field organization cmp.gh.users.OrganizationTeams?
+--
+---@class cmp.gh.users.OrganizationTeams
+---@field name string The name of the organization
+---@field teams cmp.gh.users.TeamConnection
+--
+---@class cmp.gh.users.TeamConnection
+---@field edges cmp.gh.users.TeamEdge[]
+---@field pageInfo cmp.gh.users.PageInfo
+--
+---@class cmp.gh.users.TeamEdge
+---@field node cmp.gh.users.Team
+--
+---@class cmp.gh.users.Team
+---@field name string The name of the team
+---@field combinedSlug string The slug corresponding to the organization and team
+---@field description string The description of the team
+
+---Gets the teams of a GitHub organization.
+---@param org_name string The name of the GitHub organization
+---@param callback fun(ok: boolean, result: cmp.gh.users.OrgTeamsQueryResult?)
+function github:org_teams(org_name, callback)
+  log("querying org teams for " .. org_name, vim.log.levels.DEBUG)
+  local job = self.Job:new({
+    "gh",
+    "api",
+    "--paginate",
+    "graphql",
+    "-F",
+    "org=" .. org_name,
+    "-f",
+    "query=" .. graphql_teams_query,
+    on_exit = function(job)
+      -- try to parse the result regardless of the exit code
+      -- because in the case of a non-zero exit code, it might
+      -- return a json response with an error message
+      local ok, parsed = pcall(
+        vim.json.decode,
+        job:result()[1],
+        { luanil = { object = true, array = true } }
+      )
+      log("qery org teams query success=" .. tostring(ok), vim.log.levels.DEBUG)
       callback(ok, parsed)
     end,
   })
