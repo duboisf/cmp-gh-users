@@ -80,9 +80,17 @@ function healh.check()
   local output = ""
   ok, output = sync_spawn("gh", { "auth", "status" })
   if ok then
-    vim.health.report_ok("gh auth status\n" .. vim.trim(output))
+    -- Check if the token contains the read:org scope
+    if not output:match("read:org") then
+      vim.health.report_error(
+        "gh auth",
+        "Token does not have the read:org scope.\nYou can run `gh auth refresh --scopes read:org` to add it."
+      )
+    else
+      vim.health.report_ok("gh auth token has read:org scope")
+    end
   else
-    vim.health.report_error("gh auth status", "not logged in")
+    vim.health.report_error("gh auth", "Make sure you have logged in with gh auth login and granted read:org scope")
   end
 end
 
