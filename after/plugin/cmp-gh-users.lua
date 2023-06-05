@@ -12,20 +12,32 @@ local init = function()
   GitHub.new():with_remote(function(remote)
     if remote then
       local cache = Cache.new()
-      a.void(function()
-        cache:load()
-        local source = Source.new(remote.owner, cache)
-        if cache:expired(remote.owner) then
-          -- Prepare completion response in advance.
-          -- It gets persisted to the cache so that it will be available
-          -- immediately on the next completion request.
-          source:get_completion_response()
-        end
-        vim.schedule(function()
-          ---@diagnostic disable-next-line: param-type-mismatch
-          require("cmp").register_source("gh_users", source)
+      a.run(
+        function()
+          cache:load()
+        end,
+        function()
+          local source = Source.new(remote.owner, cache)
+          local expires_in = cache:expires_in(remote.owner)
+          vim.loop.new_timer():start(
+            expires_in * 1000,
+            cfg.cache.max_age * 1000,
+            vim.schedule_wrap(function()
+              -- Prepare completion response in advance.
+              -- It gets persisted to the cache so that it will be available
+              -- immediately on the next completion request.
+              ---@type fun(source: cmp.gh.users.Source)
+              local prepare_completion_response = a.wrap(source.prepare_completion_response, 2)
+              a.void(function()
+                prepare_completion_response(source)
+                cache:save()
+              end)()
+            end))
+          vim.schedule(function()
+            ---@diagnostic disable-next-line: param-type-mismatch
+            require("cmp").register_source("gh_users", source)
+          end)
         end)
-      end)()
     end
   end)
 end

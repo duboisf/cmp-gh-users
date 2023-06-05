@@ -1,5 +1,4 @@
 local GitHub = require("cmp-gh-users.github")
-local a = require "plenary.async"
 local cfg = require("cmp-gh-users.config").get()
 local log = require("cmp-gh-users.logger").new("cmp-gh-users.source", cfg.log_level)
 
@@ -9,7 +8,6 @@ local log = require("cmp-gh-users.logger").new("cmp-gh-users.source", cfg.log_le
 ---@field private cache cmp.gh.users.Cache
 ---@field private github_owner string
 ---@field private gh cmp.gh.users.GitHub
----@field private fetching boolean Are we fetching users?
 local source = {}
 
 ---@class cmp.gh.users.Source.Config
@@ -35,58 +33,6 @@ local function format_social_accounts(social_accounts)
     table.insert(results, string.format("%s[%s](%s)", icon, social_account.displayName, social_account.url))
   end
   return table.concat(results, "\n")
-end
-
----Format documentation for nvim-cmp
----@param data cmp.gh.users.CompletionItemData
----@return string
-local function format_documentation(data)
-  local edge = data.edge
-  local member = edge.node
-  local role = edge.role:sub(1, 1) .. edge.role:sub(2):lower()
-  local documentation = role .. " of " .. data.org_name .. " org\n"
-  if member.location ~= nil then
-    documentation = documentation .. string.format("Located in %s\n", member.location)
-  end
-  if member.company ~= nil then
-    documentation = documentation .. string.format("Works at %s\n", member.company)
-  end
-  local social_accounts = format_social_accounts(member.socialAccounts.nodes)
-  if social_accounts ~= "" then
-    documentation = documentation .. social_accounts .. "\n"
-  end
-  if member.bio ~= nil then
-    documentation = documentation .. "\n" .. member.bio
-  end
-  return documentation
-end
-
----@class cmp.gh.users.CompletionItem: lsp.CompletionItem
----@field data cmp.gh.users.CompletionItemData
-
----@class cmp.gh.users.CompletionItemData
----@field org_name string
----@field edge cmp.gh.users.OrgMemberEdge
-
----Format a single item for nvim-cmp
----@param edge cmp.gh.users.OrgMemberEdge
----@return cmp.gh.users.CompletionItem
-local function format_item(edge)
-  local member = edge.node
-  local label = "@" .. member.login
-  if member.name and member.name ~= "" then
-    label = label .. " (" .. member.name .. ")"
-  end
-  return {
-    label = label,
-    insertText = "@" .. member.login,
-    data = edge,
-    cmp = {
-      kind_hl_group = "CmpItemKindUser",
-      kind_text = "User",
-    },
-    dup = 1,
-  }
 end
 
 ---Return whether this source is available in the current context or not (optional).
@@ -133,80 +79,138 @@ end
 function source:complete(params, callback)
   if not vim.tbl_contains(cfg.filetypes, params.context.filetype) then
     callback()
-    return
-  end
-  if self.fetching then
-    log("complete: currently fetching users", vim.log.levels.DEBUG)
-    callback()
   else
     local response = self.cache:get(self.github_owner)
     if response then
       log("complete: returning cached response", vim.log.levels.DEBUG)
       callback(response)
     else
-      log("complete: fetching users", vim.log.levels.DEBUG)
-      self:get_completion_response(callback)
-      if self.cache:expired(self.github_owner) then
-        log("complete: cache expired, fetching users", vim.log.levels.DEBUG)
-        -- Fetch the org members from GitHub to update the cache.
-        -- We already presented the cached response to the user,
-        -- but we want to update the cache for the next time.
-        self:get_completion_response()
-      end
+      callback()
     end
   end
 end
 
----Fetch the org members from GitHub to build the completion response and optionally pass it to the callback.
----Persists the response to the cache.
----@param self cmp.gh.users.Source
----@param callback? fun(response: lsp.CompletionResponse?)
-function source:get_completion_response(callback)
-  self.fetching = true
-  self.gh:org_members(self.github_owner, function(ok, results)
-    local response = { items = {}, isIncomplete = false }
-    if ok and results then
-      if results.data.organization then
-        local edges = results.data.organization.membersWithRole.edges
-        for _, edge in ipairs(edges) do
-          local completion_item = format_item(edge)
-          completion_item.data = {
-            org_name = results.data.organization.name,
-            edge = edge,
-          }
-          table.insert(response.items, completion_item)
-        end
-      else
-        log("get_completion_response: " .. self.github_owner .. " is not an organization", vim.log.levels.DEBUG)
-      end
+---Format the users for display in the completion menu.
+---@param org_name string The name of the GitHub organization.
+---@param users cmp.gh.users.OrgMemberEdge[]
+---@return lsp.CompletionItem[]
+local function format_users(org_name, users)
+  ---@type lsp.CompletionItem[]
+  local items = {}
+  for _, edge in ipairs(users) do
+    local member = edge.node
+    local label = "@" .. member.login
+    if member.name and member.name ~= "" then
+      label = label .. " (" .. member.name .. ")"
     end
-    if callback then
-      if type(callback) == "function" then
-        callback(response)
-      else
-        error("callback must be a function")
-      end
+    local doc = ""
+    local role = edge.role:sub(1, 1) .. edge.role:sub(2):lower()
+    doc = role .. " of " .. org_name .. " org\n"
+    if member.location ~= nil then
+      doc = doc .. string.format("Located in %s\n", member.location)
     end
-    self.cache:set(self.github_owner, response)
-    a.void(function()
-      log("get_completion_response: saving cache to filesystem", vim.log.levels.DEBUG)
-      self.cache:save()
-      self.fetching = false
-    end)()
-  end)
+    if member.company ~= nil then
+      doc = doc .. string.format("Works at %s\n", member.company)
+    end
+    local social_accounts = format_social_accounts(member.socialAccounts.nodes)
+    if social_accounts ~= "" then
+      doc = doc .. social_accounts .. "\n"
+    end
+    if member.bio ~= nil then
+      doc = doc .. "\n" .. member.bio
+    end
+    table.insert(items, {
+      documentation = doc,
+      label = label,
+      insertText = "@" .. member.login,
+      cmp = {
+        kind_hl_group = "CmpItemKindUser",
+        kind_text = "User",
+      },
+      dup = 1,
+    })
+  end
+  return items
 end
 
----Resolve completion item (optional). This is called right before the completion is about to be displayed.
----Useful for setting the text shown in the documentation window (`completion_item.documentation`).
+---Format the teams for display in the completion menu.
+---@param org_name string The name of the GitHub organization.
+---@param teamEdges cmp.gh.users.TeamEdge[]
+---@return lsp.CompletionItem[]
+local function format_teams(org_name, teamEdges)
+  ---@type lsp.CompletionItem[]
+  local items = {}
+  for _, teamEdge in ipairs(teamEdges) do
+    local team = teamEdge.node
+    local doc = team.name .. "\n\n"
+    doc = doc .. "Team part of the " .. org_name .. " org"
+    if team.description ~= nil then
+      doc = doc .. "\n\n" .. team.description
+    end
+    table.insert(items, {
+      documentation = doc,
+      label = "@" .. team.combinedSlug,
+      insertText = "@" .. team.combinedSlug,
+      cmp = {
+        kind_hl_group = "CmpItemKindTeam",
+        kind_text = "Team",
+      },
+      dup = 1,
+    })
+  end
+  return items
+end
+
+---Fetch the org users and teams from GitHub to build the completion response.
+---Persists the response to the cache.
 ---@param self cmp.gh.users.Source
----@param completion_item cmp.gh.users.CompletionItem
----@param callback fun(completion_item: lsp.CompletionItem|nil)
-function source:resolve(completion_item, callback)
-  completion_item.documentation = {
-    kind = "markdown",
-    value = format_documentation(completion_item.data),
-  }
-  callback(completion_item)
+---@param callback fun() The callback to invoke when the response is ready.
+function source:prepare_completion_response(callback)
+  coroutine.wrap(function()
+    local co = coroutine.running()
+
+    self.gh:org_members(self.github_owner, function(ok, result)
+      local members = {}
+      if ok and result.data.organization then
+        members = result.data.organization.membersWithRole.edges
+      end
+      coroutine.resume(co, "members", members)
+    end)
+
+    self.gh:org_teams(self.github_owner, function(ok, result)
+      local teams = {}
+      if ok and result.data.organization then
+        teams = result.data.organization.teams.edges
+      end
+      coroutine.resume(co, "teams", teams)
+    end)
+
+    ---@type {members: cmp.gh.users.OrgMemberEdge[], teams: cmp.gh.users.TeamEdge[]}
+    local results = {}
+
+    local function parse_yield(type, result)
+      log("parse_completion_response: parsing " .. type .. " response", vim.log.levels.DEBUG)
+      results[type] = result
+    end
+
+    log("parse_completion_response: waiting for responses", vim.log.levels.DEBUG)
+    parse_yield(coroutine.yield())
+    log("parse_completion_response: waiting for responses", vim.log.levels.DEBUG)
+    parse_yield(coroutine.yield())
+
+    local response = { items = {}, isIncomplete = false }
+
+    response.items = format_users(self.github_owner, results.members)
+    local team_items = format_teams(self.github_owner, results.teams)
+
+    for _, team_item in ipairs(team_items) do
+      table.insert(response.items, team_item)
+    end
+
+    self.cache:set(self.github_owner, response)
+
+    callback()
+  end)()
 end
 
 ---Executed after the item was selected.

@@ -47,19 +47,22 @@ function cache:set(key, value)
   self.entries[key] = cache_item
 end
 
----Check if a cache item exists and is older than `max_age`.
+---Get the number of seconds until a cache item expires.
 ---If the item doesn't exist, it is considered expired.
 ---@param self cmp.gh.users.Cache
 ---@param key string
----@return boolean
-function cache:expired(key)
+---@return number
+function cache:expires_in(key)
   local entry = self.entries[key]
-  if entry == nil then
-    return true
+  local expires_in = 0
+  if entry ~= nil then
+    expires_in = self.config.max_age - (os.time() - entry.last_update)
   end
-  local is_expired = os.time() - entry.last_update > self.config.max_age
-  log("key=" .. key .. " expired=" .. tostring(is_expired), vim.log.levels.DEBUG)
-  return is_expired
+  if expires_in < 0 then
+    expires_in = 0
+  end
+  log("key=" .. key .. " expires_in=" .. tostring(expires_in), vim.log.levels.DEBUG)
+  return expires_in
 end
 
 ---Load the cache from the filesystem.
@@ -91,19 +94,26 @@ end
 ---@param self cmp.gh.users.Cache
 ---@return nil|string Error message if saving failed
 function cache:save()
-  log("save", vim.log.levels.DEBUG)
+  log("saving", vim.log.levels.DEBUG)
   local cache_dir = vim.fs.dirname(self.config.path)
-  if not self.fs.dir_exists(cache_dir) then
-    local err, ok = self.fs.mkdirs(cache_dir)
+  ---@type string|nil, boolean|nil
+  local err, ok
+  _, ok = self.fs.dir_exists(cache_dir)
+  if not ok then
+    log("save: cache directory does not exist, creating it", vim.log.levels.DEBUG)
+    err, ok = self.fs.mkdirs(cache_dir)
     if err then
+      log("save: failed to create cache directory: " .. err, vim.log.levels.DEBUG)
       return err
     end
     if not ok then
-      log("failed to create cache directory", vim.log.levels.DEBUG)
+      log("save: failed to create cache directory", vim.log.levels.DEBUG)
       return "failed to create cache directory"
     end
   end
+
   local marshaled_entries = vim.json.encode(self.entries)
+  log("save: writing to " .. self.config.path, vim.log.levels.DEBUG)
   return self.fs.write_file(self.config.path, marshaled_entries)
 end
 

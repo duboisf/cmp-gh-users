@@ -27,7 +27,7 @@ end
 ---@return nil
 function M.set(new_config)
   -- Set the config table.
-  config = vim.tbl_extend("force", config, new_config)
+  config = vim.tbl_deep_extend("force", config, new_config)
 end
 
 return M

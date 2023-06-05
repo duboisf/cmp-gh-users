@@ -94,11 +94,11 @@ local graphql_users_query = [[
 ---@field provider string
 ---@field url string
 
----Gets the members of a GitHub organization.
+---Execute a GraphQL query against the GitHub API.
+---@param query string The GraphQL query to execute
 ---@param org_name string The name of the GitHub organization
----@param callback fun(ok: boolean, result: cmp.gh.users.OrgMembersQueryResult?)
-function github:org_members(org_name, callback)
-  log("querying org members for " .. org_name, vim.log.levels.DEBUG)
+---@param callback fun(ok: boolean, result: any)
+function github:graphql(query, org_name, callback)
   local job = self.Job:new({
     "gh",
     "api",
@@ -107,7 +107,7 @@ function github:org_members(org_name, callback)
     "-F",
     "org=" .. org_name,
     "-f",
-    "query=" .. graphql_users_query,
+    "query=" .. query,
     on_exit = function(job)
       -- try to parse the result regardless of the exit code
       -- because in the case of a non-zero exit code, it might
@@ -117,11 +117,18 @@ function github:org_members(org_name, callback)
         job:result()[1],
         { luanil = { object = true, array = true } }
       )
-      log("qery org members query success=" .. tostring(ok), vim.log.levels.DEBUG)
       callback(ok, parsed)
     end,
   })
   job:start()
+end
+
+---Gets the members of a GitHub organization.
+---@param org_name string The name of the GitHub organization
+---@param callback fun(ok: boolean, result: cmp.gh.users.OrgMembersQueryResult?)
+function github:org_members(org_name, callback)
+  log("querying org members for " .. org_name, vim.log.levels.DEBUG)
+  self:graphql(graphql_users_query, org_name, callback)
 end
 
 local graphql_teams_query = [[
@@ -172,29 +179,7 @@ local graphql_teams_query = [[
 ---@param callback fun(ok: boolean, result: cmp.gh.users.OrgTeamsQueryResult?)
 function github:org_teams(org_name, callback)
   log("querying org teams for " .. org_name, vim.log.levels.DEBUG)
-  local job = self.Job:new({
-    "gh",
-    "api",
-    "--paginate",
-    "graphql",
-    "-F",
-    "org=" .. org_name,
-    "-f",
-    "query=" .. graphql_teams_query,
-    on_exit = function(job)
-      -- try to parse the result regardless of the exit code
-      -- because in the case of a non-zero exit code, it might
-      -- return a json response with an error message
-      local ok, parsed = pcall(
-        vim.json.decode,
-        job:result()[1],
-        { luanil = { object = true, array = true } }
-      )
-      log("qery org teams query success=" .. tostring(ok), vim.log.levels.DEBUG)
-      callback(ok, parsed)
-    end,
-  })
-  job:start()
+  self:graphql(graphql_teams_query, org_name, callback)
 end
 
 local Remote = {}
