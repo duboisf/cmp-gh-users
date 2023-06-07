@@ -25,6 +25,17 @@ Complete GitHub organization usernames directly from Neovim! Offering seamless a
 **With [lazy.nvim](https://github.com/folke/lazy.nvim):**
 
 ```lua
+-- ...
+{
+  'hrsh7th/nvim-cmp',
+  config = function()
+    -- See below for nvim-cmp configuration example
+  end,
+  dependencies = {
+    'nvim-lua/plenary.nvim',
+    'onsails/lspkind.nvim',
+  },
+},
 {
   'duboisf/cmp-gh-users',
   opts = {
@@ -59,6 +70,24 @@ local cmp = require('cmp')
 
 cmp.setup({
   -- your other cmp configuration comes here
+  formatting = {
+    format = lspkind.cmp_format({
+      mode = 'symbol',
+      preset = 'codicons', -- or 'default'
+      symbol_map = {
+        -- cmp-gh-users has its own symbol kinds
+        User = '', -- 0xf2db, nerdfont nf-fa-user_circle
+        Team = '', -- 0xf0c0, nerdfont nf-fa-group
+      },
+      before = function(entry, vim_item)
+        vim_item.menu = ({
+          -- other source icons here
+          gh_users = "", -- 0xf113, nerdfont nf-fa-github_alt
+        })[entry.source.name]
+        return vim_item
+      end
+    })
+  },
   sources = {
     -- your other cmp sources come here
     { name = 'gh_users' }
